@@ -7,7 +7,7 @@ from sqlalchemy import String
 
 from collections import namedtuple
 
-ColumnTuple = namedtuple('ColumnDT', ['column_name', 'mData', 'search_like', 'filter'])
+ColumnTuple = namedtuple('ColumnDT', ['column_name', 'mData', 'search_like', 'filter', 'search_date_range'])
 
 
 def get_attr(sqla_object, attribute):
@@ -34,12 +34,12 @@ class ColumnDT(ColumnTuple):
 
     :returns: a ColumnDT object 
     """
-    def __new__(cls, column_name, mData=None, search_like=None, filter=str):
+    def __new__(cls, column_name, mData=None, search_like=None, filter=str, search_date_range=None):
         """
         On creation, sets default None values for mData and string value for
         filter (cause: Object representation is not JSON serializable)
         """
-        return super(ColumnDT, cls).__new__(cls, column_name, mData, search_like, filter)
+        return super(ColumnDT, cls).__new__(cls, column_name, mData, search_like, filter, search_date_range)
 
 
 class DataTables:
@@ -60,7 +60,7 @@ class DataTables:
     def __init__(self, request, sqla_object, query, columns):
         """Initializes the object with the attributes needed, and runs the query
         """
-        self.request_values = request.GET
+        self.request_values = request.params
         self.sqla_object = sqla_object
         self.query = query
         self.columns = columns
@@ -81,7 +81,6 @@ class DataTables:
         output['sEcho'] = str(int(self.request_values['sEcho']))
         output['iTotalRecords'] = str(self.cardinality)
         output['iTotalDisplayRecords'] = str(self.cardinality_filtered)
-        
         output['aaData'] = self.results
  
         return output
@@ -100,6 +99,8 @@ class DataTables:
 
         # pages have a 'start' and 'length' attributes
         self.paging()
+
+        print str(self.query)
 
         # fetch the result of the queries
         self.results = self.query.all()
@@ -152,14 +153,19 @@ class DataTables:
             condition = or_(*conditions)
         conditions = []
         for idx, col in enumerate(self.columns):
-            if self.request_values.get('sSearch_%s' % idx) in (True, 'true'):
+            if self.request_values.get('bSearchable_%s' % idx) in (True, 'true'):
                 search_value2 = self.request_values.get('sSearch_%s' % idx)
+                if not search_value2:
+                    continue
                 sqla_obj, column_name = search(idx, col)
-                
                 if col.search_like:
-                    conditions.append(cast(get_attr(sqla_obj, column_name), String).like(col.search_like % search_value2))
+                    conditions.append(get_attr(sqla_obj, column_name).like(col.search_like % search_value2))
+                elif col.search_date_range:
+                    _start, _end = search_value2.split(',')
+                    conditions.append(and_(get_attr(sqla_obj, column_name) >= _start,
+                                           get_attr(sqla_obj, column_name) <= _end))
                 else:
-                    conditions.append(cast(get_attr(sqla_obj, column_name), String).__eq__(search_value2))
+                    conditions.append(get_attr(sqla_obj, column_name).__eq__(search_value2))
 
                 if condition is not None:
                     condition = and_(condition, and_(*conditions))
