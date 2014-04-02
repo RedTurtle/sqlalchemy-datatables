@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+__VERSION__ = '0.1.6'
 from sqlalchemy.sql.expression import asc, desc
 from sqlalchemy.sql import or_, and_
 from sqlalchemy.orm.properties import RelationshipProperty
