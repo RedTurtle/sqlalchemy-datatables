@@ -16,7 +16,8 @@ def get_attr(sqla_object, attribute):
     """
     output = sqla_object
     for x in attribute.split('.'):
-        output = getattr(output, x)
+        if output:
+            output = getattr(output, x)
     return output
 
 
