@@ -16,7 +16,7 @@ def get_attr(sqla_object, attribute):
     """
     output = sqla_object
     for x in attribute.split('.'):
-        if output:
+        if output != None:
             output = getattr(output, x)
     return output
 
@@ -199,14 +199,7 @@ class DataTables:
         for sort in sorting:
             tmp_sort_name = sort.name.split('.')
             obj = getattr(self.sqla_object, tmp_sort_name[0])
-            if not hasattr(obj, "property"): #hybrid_property or property
-                sort_name = sort.name
-
-                if hasattr(self.sqla_object, "__tablename__"):
-                    tablename = self.sqla_object.__tablename__
-                else:
-                    tablename = self.sqla_object.__table__.name
-            elif isinstance(obj.property, RelationshipProperty): # Ex: ForeignKey
+            if isinstance(obj.property, RelationshipProperty): # Ex: ForeignKey
                  # Ex: address.description => description => addresses.description
                 sort_name = "".join(tmp_sort_name[1:])
                 if not sort_name:
@@ -214,15 +207,10 @@ class DataTables:
                     sort_name = obj.property.table.primary_key.columns \
                             .values()[0].name
                 tablename = obj.property.table.name
+                sort_name = "%s.%s" % (tablename, sort_name)
             else: #-> ColumnProperty
-                sort_name = sort.name
+                sort_name = obj
 
-                if hasattr(self.sqla_object, "__tablename__"):
-                    tablename = self.sqla_object.__tablename__
-                else:
-                    tablename = self.sqla_object.__table__.name
-
-            sort_name = "%s.%s" % (tablename, sort_name)
             self.query = self.query.order_by(
                 asc(sort_name) if sort.dir == 'asc' else desc(sort_name))
 
@@ -237,4 +225,5 @@ class DataTables:
             pages.length = int(self.request_values['iDisplayLength'])
 
         offset = pages.start + pages.length
-        self.query = self.query.slice(pages.start, offset)
+        if offset > 0:
+            self.query = self.query.slice(pages.start, offset)
