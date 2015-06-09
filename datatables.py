@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-__VERSION__ = '0.1.8dev'
+__VERSION__ = '0.1.9dev'
 from sqlalchemy.sql.expression import asc, desc
 from sqlalchemy.sql import or_, and_
 from sqlalchemy.orm.properties import RelationshipProperty
@@ -199,6 +199,8 @@ class DataTables:
         for sort in sorting:
             tmp_sort_name = sort.name.split('.')
             obj = getattr(self.sqla_object, tmp_sort_name[0])
+            if not hasattr(obj, 'property'):
+                continue
             if isinstance(obj.property, RelationshipProperty): # Ex: ForeignKey
                  # Ex: address.description => description => addresses.description
                 sort_name = "".join(tmp_sort_name[1:])
